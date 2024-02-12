@@ -110,5 +110,15 @@ export class ApiEcs extends Construct {
         new cdk.CfnOutput(this, "newSvcName", {
             value: service.serviceName
         });
+
+        // Output the newly cluster name
+        new cdk.CfnOutput(this, "newClusterName", {
+            value: cluster.clusterName
+        });
+
+        // Output the newly cluster arn
+        new cdk.CfnOutput(this, "newClusterArn", {
+            value: cluster.clusterArn
+        });
     }
 }
