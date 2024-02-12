@@ -148,3 +148,4 @@ storage/cdk-outputs.json
 storage/cdk.context.json
 storage/scripts
 storage/cdk.out
+build-server/app/.env

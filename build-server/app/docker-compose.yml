@@ -1,0 +1,23 @@
+version: '3'
+
+
+# our services
+services:
+  
+  # the target service
+  build-server:
+    build: 
+      context: .
+    container_name: build-server
+    networks:
+      - vercel-builder  
+    env_file:
+      - .env
+    # ports:
+    #   - '${PORT}:${PORT}'  
+ 
+
+
+  # custom network for linking
+networks:
+  vercel-builder:
