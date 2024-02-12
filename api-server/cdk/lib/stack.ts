@@ -4,9 +4,6 @@ import { Construct } from 'constructs';
 // Import the ApiEcs resource from the Ecs file
 import { ApiEcs } from "./resources/ecs";
 
-// Import the Storage resource from the Storage file
-import { Storage } from "./resources/storage"
-
 /**
  * Properties for defining an ECS API stack.
  */
@@ -33,18 +30,11 @@ export class EcsApiStack extends cdk.Stack {
     // Get the namespace from the CDK context or use "api" as default
     const namespace = this.node.tryGetContext("namespace") || "api";
    
-    // Create a new S3 bucket with the given namespace and stage
-    const storage = new Storage(this, `${namespace}-storage`, {
-      prefix: namespace,
-      suffix: props.stage
-    });
 
     // Create a new ECS API stack with the given namespace and stage
     new ApiEcs(this, `${namespace}-api-ecs`, {
       prefix: namespace,
-      suffix: props.stage,
-      bucketArn: storage.bucket.bucketArn,
-      bucketName: storage.bucket.bucketName
+      suffix: props.stage
     });
   }
 }

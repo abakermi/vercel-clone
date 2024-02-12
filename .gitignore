@@ -141,4 +141,10 @@ api-server/cdk/cdk-outputs.json
 api-server/cdk/cdk.out
 api-server/app/node_modules
 api-server/cdk/cdk.context.json
-api-server/app/.env.example
+
+storage/node_modules
+storage/.env
+storage/cdk-outputs.json
+storage/cdk.context.json
+storage/scripts
+storage/cdk.out

@@ -9,6 +9,8 @@ const Redis = require('ioredis')
 const app = express()
 const port = process.env.PORT || 9000
 const socketPort = process.env.SOCKET_PORT || 9002
+const subnets = process.env.SUBNETS || []
+const sg = process.env.SECURITY_GROUP || ""
 
 const config = {
     CLUSTER: process.env.ECS_CLUSTER_ARN,
@@ -53,13 +55,13 @@ app.post('/project', async (req, res) => {
         taskDefinition: config.TASK,
         launchType: 'FARGATE',
         count: 1,
-        // networkConfiguration: {
-        //     awsvpcConfiguration: {
-        //         assignPublicIp: 'ENABLED',
-        //         subnets: ['', '', ''],
-        //         securityGroups: ['']
-        //     }
-        // },
+        networkConfiguration: {
+            awsvpcConfiguration: {
+                assignPublicIp: 'ENABLED',
+                subnets: subnets.split(","),
+                securityGroups: [sg]
+            }
+        },
         overrides: {
             containerOverrides: [
                 {
@@ -85,8 +87,8 @@ async function initRedisSubscribe() {
     subscriber.on('pmessage', (pattern, channel, message) => {
         io.to(channel).emit('message', message)
     })
-}
 
+}
 
 initRedisSubscribe()
 

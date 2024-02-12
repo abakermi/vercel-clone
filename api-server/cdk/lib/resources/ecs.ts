@@ -4,6 +4,7 @@ import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as ecs from 'aws-cdk-lib/aws-ecs';
 import * as ecr from 'aws-cdk-lib/aws-ecr';
 import * as iam from 'aws-cdk-lib/aws-iam';
+import * as s3 from 'aws-cdk-lib/aws-s3';
 
 /**
  * Properties for defining an API ECS (Elastic Container Service) stack.
@@ -17,15 +18,6 @@ interface ApiEcsProps {
      * The suffix to use for naming resources.
      */
     suffix: string;
-    /**
-     * The arn of the S3 bucket.
-     */
-    bucketArn: string;
-
-    /**
-     * The anem of the S3 bucket.
-     */
-    bucketName:string
 }
 
 /**
@@ -48,8 +40,15 @@ export class ApiEcs extends Construct {
         const fMem = process.env.FARGATE_MEM_SPEC || ""
         const ecrRepoName = process.env.ECR_REPO_NAME || ""
         const ecrRepoTag = process.env.ECR_REPO_TAG || ""
+        const bucketName = process.env.BUCKET_NAME || ""
+        const bucketArn = process.env.BUCKET_ARN || ""
+        const cacheHost = process.env.CACHE_HOST || ""
+        const cachePort = process.env.CACHE_PORT || ""
+
+        let containerEnvs = {}
 
         let vpc;
+        let bucket;
 
         // If VPC ID is provided, use existing VPC. Otherwise, create a new VPC.
         if (vpcId !== "") {
@@ -77,25 +76,7 @@ export class ApiEcs extends Construct {
             });
         }
 
-        // Define security group for ElastiCache
-        const cacheSecurityGroup = new ec2.SecurityGroup(this, `${props.prefix}-cache-redis-${props.suffix}`, {
-            vpc,
-            securityGroupName: `${props.prefix}-cache-ecs-${props.suffix}`,
-            description: 'Security group for ElastiCache to be used in ECS cluster',
-        });
 
-        // Allow inbound traffic from a specific VPC CIDR range
-        cacheSecurityGroup.addIngressRule(ec2.Peer.ipv4(vpc.vpcCidrBlock), ec2.Port.tcp(6379), 'Allow Redis port');
-
-
-        
-        const subnets=vpc.privateSubnets.map((s)=>s.subnetId)
-        const cache = new cdk.aws_elasticache.CfnServerlessCache(this, `${props.prefix}-serverless-cache`, {
-            engine: 'redis',
-            serverlessCacheName: `${props.prefix}-serverless-cache`,
-            securityGroupIds: [cacheSecurityGroup.securityGroupId],
-            subnetIds:subnets
-        })
 
         // lokup ecr repo
         const ecrRepo = ecr.Repository.fromRepositoryName(this, `${props.prefix}-repo-${props.suffix}`, ecrRepoName)
@@ -122,22 +103,34 @@ export class ApiEcs extends Construct {
             serviceName: `${props.prefix}-api-${props.suffix}`,
         });
 
+        // lookup bucket 
+        if (bucketName !== "") {
+            bucket = s3.Bucket.fromBucketAttributes(this, `${props.prefix}-bucket-${props.suffix}`, {
+                bucketName: bucketName
+            })
+        }
+
+        containerEnvs = cacheHost !== "" ? { ...containerEnvs, CACHE_HOST: cacheHost }
+            : containerEnvs
+        containerEnvs = cachePort !== "" ? { ...containerEnvs, CACHE_PORT: cachePort }
+            : containerEnvs
+        containerEnvs = bucket ? { ...containerEnvs, BUCKET_NAME: bucketName } : containerEnvs
+
         // Add The builder container
         taskDefinition.addContainer(`tasks-${props.suffix}`, {
             image: ecs.ContainerImage.fromEcrRepository(ecrRepo, ecrRepoTag),
             containerName: "builder-image",
-            environment: { // Set environment variables for the container
-                CACHE_HOST: cache?.attrEndpointAddress,
-                CACHE_PORT: cache?.attrEndpointPort,
-                BUCKET_NAME: props.bucketName
-            }
+            environment: containerEnvs
         });
 
         // Add the S3 policy to the task role
-        taskDefinition.addToTaskRolePolicy(new iam.PolicyStatement({
-            actions: ['s3:*'],
-            resources: [props.bucketArn],
-        }));
+        if (bucket) {
+            taskDefinition.addToTaskRolePolicy(new iam.PolicyStatement({
+                actions: ['s3:*'],
+                resources: [bucket.bucketArn],
+            }));
+        }
+
 
         // Output the newly created task definition ARN
         new cdk.CfnOutput(this, "newTaskDefArn", {
@@ -158,10 +151,16 @@ export class ApiEcs extends Construct {
         new cdk.CfnOutput(this, "newClusterArn", {
             value: cluster.clusterArn
         });
-
-        // Output cache endpoint
-        new cdk.CfnOutput(this, "cacheEndpoint", {
-            value: cache.attrEndpointAddress
+        // used subnets
+        new cdk.CfnOutput(this, "subnets", {
+            value: `${vpc.privateSubnets.map((e) => e.subnetId).join(",")},
+            ${vpc.publicSubnets.map((e) => e.subnetId).join(",")}`
         });
+
+        new cdk.CfnOutput(this, "securityGroups", {
+            value: `${service.connections.securityGroups.map((e) => e.securityGroupId).join(",")}`
+        });
+
+
     }
 }
