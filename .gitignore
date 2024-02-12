@@ -140,3 +140,5 @@ api-server/cdk/scripts
 api-server/cdk/cdk-outputs.json
 api-server/cdk/cdk.out
 api-server/app/node_modules
+api-server/cdk/cdk.context.json
+api-server/app/.env.example

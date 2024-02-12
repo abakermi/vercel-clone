@@ -5,17 +5,17 @@ const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3')
 const mime = require('mime-types')
 const Redis = require('ioredis')
 
+const cacheHost = process.env.CACHE_PORT || 6379
+const cachePort = process.env.CACHE_HOST || "localhost"
+const bucketName = process.env.BUCKET_NAME || "vercel-clone-outputs"
 
-const publisher = new Redis('')
-
-
-const s3Client = new S3Client({
-    region: '',
-    credentials: {
-        accessKeyId: '',
-        secretAccessKey: ''
-    }
+const publisher = new Redis({
+    port: cachePort,
+    host: cacheHost
 })
+
+
+const s3Client = new S3Client()
 
 const PROJECT_ID = process.env.PROJECT_ID
 
@@ -56,7 +56,7 @@ async function init() {
             publishLog(`uploading ${file}`)
 
             const command = new PutObjectCommand({
-                Bucket: 'vercel-clone-outputs',
+                Bucket: bucketName,
                 Key: `__outputs/${PROJECT_ID}/${file}`,
                 Body: fs.createReadStream(filePath),
                 ContentType: mime.lookup(filePath)

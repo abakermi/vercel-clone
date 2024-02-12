@@ -1,3 +1,5 @@
+require("dotenv").config();
+
 const express = require('express')
 const { generateSlug } = require('random-word-slugs')
 const { ECSClient, RunTaskCommand } = require('@aws-sdk/client-ecs')
@@ -5,9 +7,18 @@ const { Server } = require('socket.io')
 const Redis = require('ioredis')
 
 const app = express()
-const PORT = 9000
+const port = process.env.PORT || 9000
+const socketPort = process.env.SOCKET_PORT || 9002
 
-const subscriber = new Redis('')
+const config = {
+    CLUSTER: process.env.ECS_CLUSTER_ARN,
+    TASK: process.env.ECS_TASK_ARN
+}
+
+const subscriber = new Redis({
+    port: process.env.REDIS_PORT || 6379,
+    host: process.env.REDIS_HOST || "localhost"
+})
 
 const io = new Server({ cors: '*' })
 
@@ -18,20 +29,17 @@ io.on('connection', socket => {
     })
 })
 
-io.listen(9002, () => console.log('Socket Server 9002'))
+io.listen(socketPort, () => console.log(`Socket Server ${socketPort}`))
 
 const ecsClient = new ECSClient({
-    region: '',
+    region: process.env.AWS_REGION,
     credentials: {
-        accessKeyId: '',
-        secretAccessKey: ''
+        accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
     }
 })
 
-const config = {
-    CLUSTER: '',
-    TASK: ''
-}
+
 
 app.use(express.json())
 
@@ -45,13 +53,13 @@ app.post('/project', async (req, res) => {
         taskDefinition: config.TASK,
         launchType: 'FARGATE',
         count: 1,
-        networkConfiguration: {
-            awsvpcConfiguration: {
-                assignPublicIp: 'ENABLED',
-                subnets: ['', '', ''],
-                securityGroups: ['']
-            }
-        },
+        // networkConfiguration: {
+        //     awsvpcConfiguration: {
+        //         assignPublicIp: 'ENABLED',
+        //         subnets: ['', '', ''],
+        //         securityGroups: ['']
+        //     }
+        // },
         overrides: {
             containerOverrides: [
                 {
@@ -82,4 +90,4 @@ async function initRedisSubscribe() {
 
 initRedisSubscribe()
 
-app.listen(PORT, () => console.log(`API Server Running..${PORT}`))
+app.listen(port, () => console.log(`API Server Running..${port}`))

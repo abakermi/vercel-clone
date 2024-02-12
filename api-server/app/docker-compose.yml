@@ -1,0 +1,33 @@
+version: '3'
+
+
+# our services
+services:
+  
+  # the target service
+  api-server:
+    build: 
+      context: .
+    links:
+      - cache   
+    container_name: api-server
+    networks:
+      - vercel  
+    env_file:
+      - .env
+    ports:
+      - '${PORT}:${PORT}'  
+ 
+  # an instance of redis for caching 
+  # note: the api can access redis throught 127.0.0.1:6379 or cache:6379    
+  cache:
+    image: redis
+    restart: always
+    networks:
+      - vercel
+    ports:
+      - '6379:6379'
+
+  # custom network for linking
+networks:
+  vercel:
