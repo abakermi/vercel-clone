@@ -128,3 +128,15 @@ dist
 .yarn/build-state.yml
 .yarn/install-state.gz
 .pnp.*
+build-server/cdk/node_modules
+build-server/cdk/.env
+build-server/cdk/scripts
+build-server/cdk/cdk-outputs.json
+build-server/cdk/cdk.out
+
+api-server/cdk/node_modules
+api-server/cdk/.env
+api-server/cdk/scripts
+api-server/cdk/cdk-outputs.json
+api-server/cdk/cdk.out
+api-server/app/node_modules
